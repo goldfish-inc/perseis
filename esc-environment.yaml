@@ -1,5 +1,5 @@
-# Pulumi ESC Environment Configuration for ML Pipeline
-# Deploy with: esc env set default/ml-pipeline-secrets --file esc-environment.yaml
+# Pulumi ESC Environment Configuration for Perseis Maritime Intelligence Platform
+# Deploy with: esc env set default/perseis-secrets --file esc-environment.yaml
 
 values:
   # Database Credentials
