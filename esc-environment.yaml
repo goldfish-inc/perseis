@@ -1,0 +1,78 @@
+# Pulumi ESC Environment Configuration for ML Pipeline
+# Deploy with: esc env set default/ml-pipeline-secrets --file esc-environment.yaml
+
+values:
+  # Database Credentials
+  postgres:
+    password:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_PASSWORD"
+    database: tradedb
+    host: postgres-postgresql.ml-pipeline.svc.cluster.local
+    port: 5432
+
+  # Object Storage
+  minio:
+    access_key:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_ACCESS_KEY"
+    secret_key:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_SECRET_KEY"
+    endpoint: http://minio.ml-pipeline.svc.cluster.local:9000
+    buckets:
+      - raw-trade-data
+      - processed-data
+      - models
+
+  # ML Platform Tokens
+  huggingface:
+    token:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_HF_TOKEN"
+
+  # Airflow
+  airflow:
+    fernet_key:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_FERNET_KEY"
+    admin_password:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_PASSWORD"
+
+  # Grafana
+  grafana:
+    admin_password:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_PASSWORD"
+
+  # Cluster Configuration
+  cluster:
+    kubeconfig_path: /Users/rt/Developer/oceanid/cluster/kubeconfig.yaml
+    nodes:
+      vps1: tethys.boathou.se
+      vps2: styx.boathou.se
+      vps3: meliae.boathou.se  # Future
+      workstation: calypso  # RTX 4090 workstation
+
+  # Environment Variables for applications
+  environmentVariables:
+    POSTGRES_PASSWORD: ${postgres.password}
+    POSTGRES_HOST: ${postgres.host}
+    POSTGRES_DB: ${postgres.database}
+    MINIO_ACCESS_KEY: ${minio.access_key}
+    MINIO_SECRET_KEY: ${minio.secret_key}
+    MINIO_ENDPOINT: ${minio.endpoint}
+    HF_TOKEN: ${huggingface.token}
+    AIRFLOW_FERNET_KEY: ${airflow.fernet_key}
+
+  # Pulumi Configuration
+  pulumiConfig:
+    ml-pipeline:postgresPassword: ${postgres.password}
+    ml-pipeline:minioAccessKey: ${minio.access_key}
+    ml-pipeline:minioSecretKey: ${minio.secret_key}
+    ml-pipeline:huggingfaceToken: ${huggingface.token}
+    ml-pipeline:airflowFernetKey: ${airflow.fernet_key}
+    ml-pipeline:airflowPassword: ${airflow.admin_password}
+    ml-pipeline:grafanaPassword: ${grafana.admin_password}
+    ml-pipeline:kubeconfig: ${cluster.kubeconfig_path}

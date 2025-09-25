@@ -1,0 +1,156 @@
+#cloud-config
+# Ubuntu 24.04 LTS Unattended Installation for ML Workstation
+# Dual RTX 4090 Configuration (ready for upgrade)
+
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+
+  network:
+    network:
+      version: 2
+      ethernets:
+        enp0s31f6:  # Adjust for AMD motherboard later
+          dhcp4: true
+          dhcp6: false
+
+  storage:
+    layout:
+      name: lvm
+      sizing-policy: all
+
+  identity:
+    hostname: ml-workstation
+    username: mlops
+    password: "$6$rounds=4096$..."  # Generate with: mkpasswd -m sha-512
+
+  ssh:
+    install-server: true
+    authorized-keys:
+      - "ssh-ed25519 AAAAC3..."  # Add your SSH key
+
+  packages:
+    - ubuntu-drivers-common
+    - build-essential
+    - git
+    - curl
+    - wget
+    - vim
+    - htop
+    - nvtop
+    - docker.io
+    - nfs-common
+    - python3-pip
+    - python3-venv
+
+  late-commands:
+    # NVIDIA Driver Installation
+    - curtin in-target --target=/target -- ubuntu-drivers install nvidia:550
+
+    # CUDA 12.x Installation
+    - |
+      curtin in-target --target=/target -- bash -c '
+      wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+      dpkg -i cuda-keyring_1.1-1_all.deb
+      apt update
+      apt install -y cuda-toolkit-12-6
+      echo "export PATH=/usr/local/cuda-12.6/bin:$PATH" >> /etc/profile.d/cuda.sh
+      echo "export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH" >> /etc/profile.d/cuda.sh
+      '
+
+    # Docker GPU Support
+    - |
+      curtin in-target --target=/target -- bash -c '
+      distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+      curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add -
+      curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | tee /etc/apt/sources.list.d/nvidia-docker.list
+      apt update
+      apt install -y nvidia-container-toolkit
+      systemctl restart docker
+      usermod -aG docker mlops
+      '
+
+    # Python ML Environment
+    - |
+      curtin in-target --target=/target -- bash -c '
+      pip3 install --upgrade pip
+      pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+      pip3 install transformers accelerate bitsandbytes
+      pip3 install unsloth pandas numpy scikit-learn
+      pip3 install great-expectations airflow
+      pip3 install mlflow wandb
+      '
+
+    # NFS Mount for Shared Storage
+    - |
+      curtin in-target --target=/target -- bash -c '
+      mkdir -p /data/ingest /data/processed /data/models
+      echo "nfs-server:/export/data /data nfs defaults 0 0" >> /etc/fstab
+      '
+
+    # k3s Agent Installation
+    - |
+      curtin in-target --target=/target -- bash -c '
+      curl -sfL https://get.k3s.io | K3S_URL=https://tethys.boathou.se:6443 K3S_TOKEN=${K3S_TOKEN} sh -s - agent \
+        --node-label="node-role.kubernetes.io/gpu=true" \
+        --node-label="oceanid.node/name=calypso" \
+        --node-label="oceanid.node/gpu=rtx4090x2"
+      '
+
+    # GPU Optimization Settings
+    - |
+      curtin in-target --target=/target -- bash -c '
+      nvidia-smi -pm 1
+      nvidia-smi -pl 450  # Power limit for RTX 4090
+      echo "options nvidia NVreg_PreserveVideoMemoryAllocations=1" > /etc/modprobe.d/nvidia.conf
+      '
+
+    # Monitoring Tools
+    - |
+      curtin in-target --target=/target -- bash -c '
+      docker run -d --name node-exporter \
+        --restart=always \
+        --pid="host" \
+        --net="host" \
+        -v "/:/host:ro,rslave" \
+        prom/node-exporter \
+        --path.rootfs=/host
+
+      docker run -d --name nvidia-exporter \
+        --restart=always \
+        --gpus all \
+        -p 9835:9835 \
+        utkuozdemir/nvidia-exporter:v1.2.0
+      '
+
+    # Pulumi and ESC CLI
+    - |
+      curtin in-target --target=/target -- bash -c '
+      curl -fsSL https://get.pulumi.com | sh
+      mv /root/.pulumi/bin/pulumi /usr/local/bin/
+      pulumi plugin install resource kubernetes
+      pulumi plugin install resource docker
+      '
+
+    # Final Setup
+    - echo "ML Workstation setup complete. Reboot to apply all changes."
+
+# Package groups for ML/AI workload
+packages_groups:
+  ml_base:
+    - python3-dev
+    - python3-pip
+    - python3-venv
+    - jupyter-notebook
+
+  gpu_tools:
+    - nvidia-cuda-toolkit
+    - nvidia-cudnn
+    - libnvinfer8
+    - libnvinfer-plugin8
+
+  monitoring:
+    - prometheus-node-exporter
+    - grafana-agent

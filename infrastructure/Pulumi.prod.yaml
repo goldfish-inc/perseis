@@ -1,0 +1,2 @@
+environment:
+  - ml-pipeline-secrets
