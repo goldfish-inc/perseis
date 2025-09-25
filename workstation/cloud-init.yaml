@@ -72,15 +72,36 @@ autoinstall:
       usermod -aG docker mlops
       '
 
-    # Python ML Environment
+    # Python ML Environment with Docling-Granite
     - |
       curtin in-target --target=/target -- bash -c '
-      pip3 install --upgrade pip
-      pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-      pip3 install transformers accelerate bitsandbytes
-      pip3 install unsloth pandas numpy scikit-learn
-      pip3 install great-expectations airflow
-      pip3 install mlflow wandb
+      # Install Miniconda for proper Python environment management
+      wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+      bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda
+      echo "export PATH=/opt/miniconda/bin:$PATH" >> /etc/profile.d/conda.sh
+      source /opt/miniconda/bin/activate
+
+      # Core ML packages
+      pip install --upgrade pip
+      pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+      pip install transformers accelerate bitsandbytes
+      pip install unsloth pandas numpy scikit-learn
+      pip install great-expectations airflow
+      pip install mlflow wandb
+
+      # Docling with Granite for PDF processing
+      pip install docling docling-ibm-models docling-parse
+      pip install mlx mlx-vlm  # For Mac acceleration if needed
+
+      # Download Granite models for document processing
+      python -c "from transformers import AutoModelForCausalLM, AutoTokenizer; \
+                 AutoTokenizer.from_pretrained(\"ibm-granite/granite-guardian-3.1-2b\"); \
+                 AutoModelForCausalLM.from_pretrained(\"ibm-granite/granite-3.1-2b-instruct\")"
+
+      # Install document processing dependencies
+      apt install -y tesseract-ocr tesseract-ocr-eng poppler-utils
+      pip install pytesseract pdf2image unstructured unstructured-inference
+      pip install pypdf pdfplumber camelot-py[cv]
       '
 
     # NFS Mount for Shared Storage
