@@ -31,6 +31,31 @@ values:
       fn::secret:
         ciphertext: "REPLACE_WITH_ENCRYPTED_HF_TOKEN"
 
+  # Ubuntu Pro and System Secrets
+  ubuntu:
+    pro_token:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_UBUNTU_PRO_TOKEN"
+
+  # SSH Keys for workstation access
+  ssh:
+    public_key:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_SSH_PUBLIC_KEY"
+
+  # Workstation User Credentials
+  workstation:
+    username: mlops
+    password_hash:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_PASSWORD_HASH"
+
+  # k3s Cluster Token for workstation join
+  k3s:
+    cluster_token:
+      fn::secret:
+        ciphertext: "REPLACE_WITH_ENCRYPTED_K3S_TOKEN"
+
   # Airflow
   airflow:
     fernet_key:
@@ -65,6 +90,9 @@ values:
     MINIO_ENDPOINT: ${minio.endpoint}
     HF_TOKEN: ${huggingface.token}
     AIRFLOW_FERNET_KEY: ${airflow.fernet_key}
+    UBUNTU_PRO_TOKEN: ${ubuntu.pro_token}
+    K3S_TOKEN: ${k3s.cluster_token}
+    SSH_PUBLIC_KEY: ${ssh.public_key}
 
   # Pulumi Configuration
   pulumiConfig:

@@ -12,9 +12,16 @@ autoinstall:
     network:
       version: 2
       ethernets:
-        enp0s31f6:  # Adjust for AMD motherboard later
+        enp0s31f6:  # Will be adjusted for AMD motherboard later
           dhcp4: true
           dhcp6: false
+      wifis:
+        wlan0:
+          dhcp4: true
+          dhcp6: false
+          access-points:
+            "PLACEHOLDER_WIFI_SSID":
+              password: "PLACEHOLDER_WIFI_PASSWORD"
 
   storage:
     layout:
